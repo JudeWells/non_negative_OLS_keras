@@ -2,6 +2,7 @@ import tensorflow as tf
 import keras
 import numpy as np
 from keras import backend as K
+import sys
 
 class Constraint(object):
     """Constraint base class:
@@ -62,23 +63,21 @@ class l1_and_price(Regularizer):
         return regularization
 
 class nn_ols():
-    def __init__(self, X, y, l1=0, price_weight=0, prices=tf.constant(0., shape=(1,16,1)) lr=0.001, epochs=250):
+    """Initialises and trains OLS model with data and hyper-parameters provided during initialisation
+    """
+    def __init__(self, X, y, l1=0, price_weight=0, prices=tf.constant(0., shape=(1,16,1)), lr=0.001, epochs=250):
         self.model = keras.Sequential()
         self.model.add(keras.layers.Dense(1,
                                      input_dim=X.shape[1],
                                      activation='linear',
                                      use_bias=False,
                                      kernel_constraint=NonNegSumToOne(),
-                                     kernel_regularizer = l1_and_price(l1=0, price_weight=0),
+                                     kernel_regularizer = l1_and_price(l1=0, price_weight=0, prices=prices),
                                      kernel_initializer= keras.initializers.Constant(value=0.1)))
 
         sgd = keras.optimizers.SGD(lr=0.0005, decay=1e-6, momentum=0.1, nesterov=True)
         self.model.compile(loss='mean_squared_error', optimizer=sgd)
 
-        self.model.fit(X, y, epochs = epochs, batch_size=len(df), verbose = 0)
-        self.non_zero_ingredients = K.sum(K.cast_to_floatx(K.greater_equal(model.weights, 0.01))).numpy()
-        print(self.non_zero_ingredients)
-
-
-
-    def fit:
+        self.model.fit(X, y, epochs = epochs, batch_size=len(X), verbose = 0)
+        self.weights = self.model.weights
+        self.non_zero_ingredients = K.sum(tf.cast(K.greater_equal(self.model.weights, 0.01), tf.int32)).numpy()
